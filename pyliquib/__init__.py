@@ -63,7 +63,7 @@ def __acquire_liquib_lock(db, sleep_time_secs=5):
     my_uuid = str(uuid.uuid4())
 
     for i in range(1, 6):
-        lock_collection.insert({'concurrent': 1, 'uuid': my_uuid}, w=99, j=True, fsync=True)
+        lock_collection.insert({'concurrent': 1, 'uuid': my_uuid}, w=99, j=True)
 
         lock = lock_collection.find_one({'concurrent': 1})
 
