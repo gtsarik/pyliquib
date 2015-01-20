@@ -1,6 +1,7 @@
 import logging
 import threading
 import time
+import uuid
 
 from constants import *
 from pyliquib.inlinejs import InlineJsChangeSet
@@ -48,14 +49,25 @@ def __ensure_id_index(db):
     db[LIQUIB_LOG].ensure_index('id', 1, unique=True)
 
 
+def __ensure_lock_index(db):
+    lock_collection = db[LIQUIB_LOCK]
+    lock_collection.remove({'concurrent': {'$ne': 1}})
+    lock_collection.ensure_index('concurrent', 1, unique=True, expireAfterSeconds=20)
+
+
 def __acquire_liquib_lock(db, sleep_time_secs=5):
     logger.info('Acquiring lock...')
+    __ensure_lock_index(db)
     lock_collection = db[LIQUIB_LOCK]
 
-    for i in range(1, 6):
-        lock = lock_collection.find_and_modify({}, {'$inc': {'lock_i': 1}}, upsert=True, new=True)
+    my_uuid = str(uuid.uuid4())
 
-        if lock['lock_i'] == 1:
+    for i in range(1, 6):
+        lock_collection.insert({'concurrent': 1, 'uuid': my_uuid}, w=99, j=True)
+
+        lock = lock_collection.find_one({'concurrent': 1})
+
+        if lock['uuid'] == my_uuid:
             return True
         else:
             print 'attempt %d' % i
